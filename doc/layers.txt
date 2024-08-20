@@ -1,0 +1,405 @@
+==============================================================================
+------------------------------------------------------------------------------
+*layers.nvim* Layered keymaps and modes
+
+MIT License Copyright (c) 2024 Daniel Nägele
+
+==============================================================================
+
+# Key Design Ideas ~
+- Use |vim.fn.maparg| and |vim.fn.mapset| to preserve overlaid keymaps and
+  restore them later. This is encapsulated in the `map` component of this
+  plugin.
+- Provide high level `mode` component to craft custom modes which can show a
+  visual help for overlaid keymaps.
+
+# Setup ~
+
+Use `require('layers').setup({})` (|Layers.setup|) to apply configuration
+globally and create the global Lua table `Layers` that you can use
+in your config to create |Layers.map|s and |Layers.mode|s.
+
+# Table of Contents ~
+
+  Global Options and Defaults..................................|Layers.config|
+  Using Layered Keymaps.............................................|layermap|
+    Layers.map.new()..........................................|layermap.new()|
+    mymap:set(...)............................................|layermap:set()|
+    mymap:clear()...........................................|layermap:clear()|
+  Using Layered Modes..............................................|layermode|
+    Layers.mode.new()........................................|layermode.new()|
+    mymode:keymaps(...)..................................|layermode:keymaps()|
+    mymode:add(...)..........................................|layermode:add()|
+    mymode:activate()...................................|layermode:activate()|
+    mymode:oneshot(...)..................................|layermode:oneshot()|
+    mymode:deactivate()...............................|layermode:deactivate()|
+    mymode:toggle().......................................|layermode:toggle()|
+    mymode:active().......................................|layermode:active()|
+    mymode:add_hook(...)................................|layermode:add_hook()|
+    mymode:auto_show_help().......................|layermode:auto_show_help()|
+    mymode:show_help(...)..............................|layermode:show_help()|
+    mymode:dismiss_help()...........................|layermode:dismiss_help()|
+    mymode:toggle_help().............................|layermode:toggle_help()|
+------------------------------------------------------------------------------
+                                                                        *Layers*
+                                    `Layers`
+Layers is the main table exposed by |layers.nvim|. It allows access to
+|Layers.map| and |Layers.mode|, which expose the core functionalities of
+|layers.nvim|.
+
+Any functionality can be configured globally by using |Layers.setup|, which
+will globally export a `Layers` object for convenient access in configs.
+The |Layers.config| section details the default options used by the |Layers|
+components.
+
+Class ~
+{layers}
+
+Fields ~
+{config} layers.setup_opts
+{setup} `(fun(opts:layers.setup_opts):layers)`
+{map} layers.map
+{mode} layers.mode
+
+Type ~
+layers
+
+------------------------------------------------------------------------------
+                                                                 *Layers.config*
+                                `Layers.config`
+These are the default values that users can modify and add to using
+|Layers.setup|. All options take effect globally for new instances of
+|Layers.mode|. There are currently no options used by |Layers.map|.
+>lua
+  Layers.config = {
+    map = nil,
+    mode = {
+      help = {
+        force_mode_headers = false,
+        missing_desc_string = "unknown",
+      },
+      window = {
+        config = {
+          relative = "editor",
+          width = 24,
+          -- height dynamically matches the number of keymaps if left empty
+          col = vim.go.columns,
+          row = vim.go.lines,
+          anchor = "SE",
+          style = "minimal",
+          title = "Overlaid Maps",
+          border = "rounded",
+        },
+        opts = {
+          wrap = false,
+          winhl = "Normal:LayersHelpWindow",
+        },
+      },
+    },
+  }
+
+<
+Class ~
+{layers.setup_opts}
+Fields ~
+{mode} mode_config?
+{map} `(nil)` Layered Maps currently have no global setup or configuration
+
+Class ~
+{mode_config}  Global setup and configuration for the Layered Mode
+{help} help_opts?
+{window} window_opts?
+
+Class ~
+{help_opts} Custom Options regarding the help window a Mode can show
+{force_mode_headers} `(boolean?)`
+{missing_desc_string} `(string?)`
+
+Class ~
+{window_opts} Table holding native Neovim options regarding the help window
+buffer creation
+{config} vim.api.keyset.win_config
+{opts} vim.api.keyset.option
+
+Type ~
+layers.setup_opts
+
+------------------------------------------------------------------------------
+                                                                *Layers.setup()*
+                             `Layers.setup`({opts})
+Setup `layers.nvim` with the given options and export the resuling table as
+`Layers`. It's technically possible to use this plugin without calling this
+method, but users should make sure they understand what they're doing if
+they choose to do so.
+
+Parameters ~
+{opts} layers.setup_opts
+Return ~
+layers
+
+------------------------------------------------------------------------------
+                                                                    *Layers.map*
+                                  `Layers.map`
+Accessor for the `map` component of |Layers|. See |layermap| for details.
+
+------------------------------------------------------------------------------
+                                                                   *Layers.mode*
+                                 `Layers.mode`
+Accessor for the `mode` component of |Layers|. See |layermode| for details.
+
+
+==============================================================================
+------------------------------------------------------------------------------
+                                                                      *layermap*
+                                   `layermap`
+The layermap table's functionality can be accessed through the global
+|Layers.map| after |Layers.setup| has been called, i.e. by creating a new
+overlay instance using `Layers.map.new()`.
+
+It allows users to define a new overlay map using |layermap.new()|, which
+will enable setting custom, temporary, and overlaid keymaps using
+|layermap:set()|. This overlay can be dismissed at any time with
+|layermap:clear()|.
+
+Class ~
+{layers.map}
+Fields ~
+{_store} `(table<layers.mapmode, table<layers.lhs, layers.maparg_dict>>)`
+
+------------------------------------------------------------------------------
+                                                                *layermap.new()*
+                                `layermap.new`()
+Create a new map layer. It will have an empty internal store and does not
+apply any keymaps. See |layermap:set()| and |layermap:clear()| on how to use
+the returned table.
+
+Return ~
+layers.map instance
+
+------------------------------------------------------------------------------
+                                                                *layermap:set()*
+                  `layermap:set`({mode}, {lhs}, {rhs}, {opts})
+Set a keymap on this layer. Calling this method will internally store the
+original keymap for the given `mode` and `lhs` combination. Consecutive
+calls will not override the internal store again. With regards to Neovim's
+behavior, the call to `set` will behave exactly as |vim.keymap.set| would,
+and in fact calls this method internally.
+
+Parameters ~
+{mode} layers.mapmodes
+{lhs} layers.lhs
+{rhs} layers.rhs
+{opts} vim.keymap.set.Opts
+
+------------------------------------------------------------------------------
+                                                              *layermap:clear()*
+                               `layermap:clear`()
+Clear keymaps defined by this layer using earlier |layermap:set()| calls and
+restore the original keymaps which were preserved internally.
+
+
+
+==============================================================================
+------------------------------------------------------------------------------
+                                                                     *layermode*
+                                  `layermode`
+The layermode table's functionality can be accessed through the global
+|Layers.mode| after |Layers.setup| has been called, i.e. by creating a new
+overlay instance using `Layers.mode.new()`.
+
+It allows users to define custom modes which overlay the actual Neovim
+modes. This extends the mechanism of |Layers.map| (which is still used
+internally) with some additional features:
+- It allows adding keymaps to the mode without them becoming active
+  immediately. This is done by either using |layermode:add()| and going one
+  by one as the |layermap:set()| would do, or by providing all of them at
+  once using |layermode:keymaps()|.
+- It supports activating the keymaps using |layermode:activate()|,
+  |layermode:toggle()|, or |layermode:oneshot()|. The last of which will
+  quit the mode after executing any single overlaid keymap.
+- It supports deactivating the keymaps using |layermode:deactivate()|, or
+  |layermode:toggle()|.
+- It supports the creation of hooks into the (de-)activation of the mode using
+  |layermode:hook()|
+- It supports showing a helper display for the keymaps in the mode with the
+  |layermode:show_help()|, |layermode:dismiss_help()|,
+  |layermode:toggle_help()|, and |layermode:auto_show_help()| methods.
+
+Class ~
+{layers.mode}
+Fields ~
+{_win} `(integer)`
+{_maps} `(table<layers.mapmode, layers.keymaps>)`
+{_hooks} layers.hook[]
+{_active} layers.map
+{opts} help_opts
+{window} window_opts
+
+------------------------------------------------------------------------------
+                                                             *layermode.setup()*
+                           `layermode.setup`({opts})
+Setup instances with default configs. The provided options will apply to all
+future instances created with |layermode.new()| (i.e. also through the
+recommended accessor `Layers.mode.new()`)
+
+This is usually called by the plugin-wide |Layers.setup()| using the correct
+sub table of the global |Layers.config| and does not need to be accessed
+manually.
+
+Parameters ~
+{opts} `(optional)` mode_config
+Return ~
+layers.mode class
+
+------------------------------------------------------------------------------
+                                                               *layermode.new()*
+                               `layermode.new`()
+Create a new layered mode. The returned instance embeds the currently active
+global settings and works otherwise fully independently from other
+instances. Parallel use of multiple instances will come with the possibility
+of one mode storing an overlaid keymap as an original to be restored, and is
+thus not recommended.
+
+Return ~
+layers.mode instance
+
+------------------------------------------------------------------------------
+                                                           *layermode:keymaps()*
+                          `layermode:keymaps`({opts})
+Add multiple keymaps to this mode. The `opts` param must be a table with
+entries per mode, using it's short-name as a key (see the first param to
+|nvim_set_keymap|). The value of those entries should be a list of keymap
+tables containing three values.
+Usage ~
+>lua
+  mymode:keymaps({
+    n = {
+      {
+        "r",
+        function() vim.cmd("smile") end,
+        { desc = "not replace" },
+      },
+      ...
+    },
+    i = { ... },
+  })
+
+
+This method does not replace or remove already present keymaps, it rather
+just appends them to the internal store, with the later ones taking
+precedence in case of conflicting `lhs` params.
+
+Parameters ~
+{opts} `(table<layers.mapmode, layers.keymaps>)`
+
+------------------------------------------------------------------------------
+                                                               *layermode:add()*
+                 `layermode:add`({mode}, {lhs}, {rhs}, {opts})
+Add a single keymap to this mode. This call follows the same rules as
+|vim.keymap.set| does. It will append to any existing keymaps already
+stored, with the later ones taking precedence in case of conflicting `lhs`
+params.
+
+Parameters ~
+{mode} layers.mapmodes
+{lhs} layers.lhs
+{rhs} layers.rhs
+{opts} vim.keymap.set.Opts
+
+------------------------------------------------------------------------------
+                                                          *layermode:activate()*
+                             `layermode:activate`()
+Activate this layered_mode, bringing the keymaps of this mode into effect by
+creating a new layered_map and running all hooks.
+
+
+------------------------------------------------------------------------------
+                                                           *layermode:oneshot()*
+                             `layermode:oneshot`()
+Activate this mode similar to activate, but exit the mode after a single
+keymap has been used once. This uses a |layermode:hook()| internally.
+
+
+------------------------------------------------------------------------------
+                                                        *layermode:deactivate()*
+                            `layermode:deactivate`()
+Deactivate this layered_mode, clearing the underlying mode and running all
+hooks.
+
+
+------------------------------------------------------------------------------
+                                                            *layermode:toggle()*
+                              `layermode:toggle`()
+Toggle this mode using the activate or deactivate methods, depending on the
+current status.
+
+
+------------------------------------------------------------------------------
+                                                            *layermode:active()*
+                              `layermode:active`()
+Return the current active status of this mode.
+
+Return ~
+`(boolean)`
+
+------------------------------------------------------------------------------
+                                                          *layermode:add_hook()*
+                          `layermode:add_hook`({hook})
+Hook the provided function into the flow, right after the activation or
+deactivation respectively. Expects a function taking a single boolean (the
+active status when the hook is run).
+
+For an example, see |layermode:auto_show_help()|.
+
+Parameters ~
+{hook} layers.hook
+
+------------------------------------------------------------------------------
+                                                    *layermode:auto_show_help()*
+                          `layermode:auto_show_help`()
+Automatically show the help window for this mode, depending on the active
+status. See |layermode:show_help()|. In contrast to the regular `show_help`
+call, this method takes no params. It is however trivial to recreate the
+hook used under the hood with some non-global options:
+>lua
+  function layermode:auto_show_help()
+    self:add_hook(function(active)
+      if active then
+        self:show_help()
+      else
+        self:dismiss_help()
+      end
+    end)
+  end
+
+<
+------------------------------------------------------------------------------
+                                                         *layermode:show_help()*
+            `layermode:show_help`({opts}, {win_config}, {win_opts})
+Show a help window for this mode. If the params are omitted, the window will
+use the global settings from |Layers.setup()|.
+
+Parameters ~
+{opts} help_opts?
+{win_config} vim.api.keyset.win_config?
+{win_opts} vim.api.keyset.option?
+
+------------------------------------------------------------------------------
+                                                      *layermode:dismiss_help()*
+                           `layermode:dismiss_help`()
+Dismiss the help window for this mode if it is shown.
+
+
+------------------------------------------------------------------------------
+                                                       *layermode:toggle_help()*
+                           `layermode:toggle_help`()
+Toggle the help window for this mode.
+
+
+
+==============================================================================
+------------------------------------------------------------------------------
+Type definitions
+
+
+ vim:tw=78:ts=8:noet:ft=help:norl:
