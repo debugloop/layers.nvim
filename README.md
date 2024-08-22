@@ -5,6 +5,11 @@ act as lightweight layered modes. To this end, it uses some syntactic sugar and 
 around two builtin Neovim functions to save and restore mappings (see `:help layers.nvim` for more
 details).
 
+This effectively means you could overlay any keys with different functionality, with a builtin way
+to turn back your keymaps to what they were when you started using the layer. I.e. the keymap you
+overlaid will be restored to what it was instead of unmapped. This works for any keymap, whether it
+is a builtin, set by your config, set by a distro, or set by a plugin.
+
 It is supposed to be used thorough your config, for instance to enhance other plugins. As such, it
 is thoroughly documented (`:help layers.nvim`) and comes with Lua type annotations, making
 configuration and usage a breeze if you have a Lua LSP such as [lazydev.nvim][lazydev] configured.
