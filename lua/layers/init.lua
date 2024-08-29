@@ -77,8 +77,7 @@ Layers.config = {
         relative = "editor",
         width = 24,
         -- height dynamically matches the number of keymaps if left empty
-        col = vim.go.columns,
-        row = vim.go.lines,
+        -- col and row will be dynamically set to the bottom right corner if left empty
         anchor = "SE",
         style = "minimal",
         title = "Overlaid Maps",

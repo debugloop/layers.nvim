@@ -249,7 +249,11 @@ function layermode:show_help(opts, win_config, win_opts)
 
   -- open window with config
   win_config = vim.tbl_deep_extend("force", self.window.config, win_config)
-  win_config = vim.tbl_deep_extend("keep", win_config, { height = #text })
+  win_config = vim.tbl_deep_extend("keep", win_config, {
+    height = #text,
+    col = vim.go.columns,
+    row = vim.go.lines - 1,
+  })
   self._win = vim.api.nvim_open_win(buf, false, win_config)
 
   -- set additional window options
