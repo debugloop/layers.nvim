@@ -229,6 +229,7 @@ Class ~
 Fields ~
 {_win} `(integer)`
 {_maps} `(table<layers.mapmode, layers.keymaps>)`
+{_mode_name} `(string?)`
 {_hooks} layers.hook[]
 {_active} layers.map
 {opts} help_opts
@@ -252,13 +253,15 @@ layers.mode class
 
 ------------------------------------------------------------------------------
                                                                *layermode.new()*
-                               `layermode.new`()
+                            `layermode.new`({name})
 Create a new layered mode. The returned instance embeds the currently active
 global settings and works otherwise fully independently from other
 instances. Parallel use of multiple instances will come with the possibility
 of one mode storing an overlaid keymap as an original to be restored, and is
 thus not recommended.
 
+Parameters ~
+{name} `(string?)` mode name, will override the configured help window title
 Return ~
 layers.mode instance
 
