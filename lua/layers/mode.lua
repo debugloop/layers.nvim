@@ -24,6 +24,7 @@
 ---@class layers.mode
 ---@field _win integer
 ---@field _maps table<layers.mapmode, layers.keymaps>
+---@field _mode_name string?
 ---@field _hooks layers.hook[]
 ---@field _active layers.map
 ---@field opts help_opts
@@ -55,9 +56,11 @@ end
 --- thus not recommended.
 ---
 ---@toc_entry   Layers.mode.new()
+---@param name string? mode name, will override the configured help window title
 ---@return layers.mode instance
-function layermode.new()
+function layermode.new(name)
   local self = setmetatable({}, layermode)
+  self._mode_name = name
   self._maps = {}
   self._hooks = {}
   setmetatable(self._maps, {
@@ -254,6 +257,10 @@ function layermode:show_help(opts, win_config, win_opts)
     col = vim.go.columns,
     row = vim.go.lines - 1,
   })
+  -- add some text to the title to distinguish between modes
+  if self._mode_name ~= nil then
+    win_config.title = self._mode_name
+  end
   self._win = vim.api.nvim_open_win(buf, false, win_config)
 
   -- set additional window options
