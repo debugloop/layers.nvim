@@ -56,7 +56,7 @@ end
 --- thus not recommended.
 ---
 ---@toc_entry   Layers.mode.new()
----@param name string mode name, will be displayed in the help window
+---@param name string? mode name, will override the configured help window title
 ---@return layers.mode instance
 function layermode.new(name)
   local self = setmetatable({}, layermode)
