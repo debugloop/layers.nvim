@@ -24,7 +24,7 @@
 ---@class layers.mode
 ---@field _win integer
 ---@field _maps table<layers.mapmode, layers.keymaps>
----@field _mode_name string
+---@field _mode_name string?
 ---@field _hooks layers.hook[]
 ---@field _active layers.map
 ---@field opts help_opts
